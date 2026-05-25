@@ -15,6 +15,8 @@ from app.services.kafka_consumer import KafkaConsumerManager
 from app.services.result_storage import ResultStorage
 from ml.predict import predict_from_file
 from ml.model import load_model, ModelLoadError
+from prometheus_client import start_http_server
+from app.metrics import inference_time, model_status, tasks_in_progress
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -56,8 +58,12 @@ async def main():
 
     # Попытка загрузить модель при запуске
     try:
-        load_model()  # кеширует в глобальную переменную
+        load_model()
+        model_status.set(1)
+        start_http_server(8001)
+        logger.info("Metrics server started on port 8001")
     except ModelLoadError as e:
+        model_status.set(0)
         logger.critical("Cannot start worker: %s", str(e))
         await asyncio.sleep(5)
         raise SystemExit(1)
@@ -70,15 +76,19 @@ async def main():
 
     # Обработчик сообщений
     async def handle_message(task_id: str, image_path: str, confidence_threshold: float):
+        tasks_in_progress.inc()
+        t_start = time.perf_counter()
         try:
             detections = predict_from_file(image_path, confidence_threshold)
+            elapsed = time.perf_counter() - t_start
+            inference_time.observe(elapsed)
             await redis_client.set_result(task_id, detections)
             logger.info("Task completed", extra={"task_id": task_id, "detections_count": len(detections)})
         except Exception as e:
             logger.error("Task failed", extra={"task_id": task_id, "error": str(e)})
             await redis_client.set_error(task_id, str(e))
         finally:
-            # Удаляем файл сразу после обработки (успех или ошибка)
+            tasks_in_progress.dec()
             try:
                 if os.path.exists(image_path):
                     os.remove(image_path)

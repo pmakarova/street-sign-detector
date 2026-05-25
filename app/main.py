@@ -11,6 +11,7 @@ from app.core.logging_config import setup_logging
 from app.api.routes import router
 from app.services.kafka_producer import KafkaProducerManager
 from app.services.result_storage import ResultStorage
+from prometheus_fastapi_instrumentator import Instrumentator
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Street Sign Detector API", version="0.1.0", lifespan=lifespan)
 
+# Инструментируем приложение – метрики будут доступны на /metrics
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(router)
 
