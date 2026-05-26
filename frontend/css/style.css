@@ -1,4 +1,3 @@
-/* Базовые стили и переменные */
 :root {
     --bg-color: #f8fafc;
     --card-bg: #ffffff;
@@ -113,7 +112,7 @@ body {
 
 canvas {
     max-width: 100%;
-    height: auto; /* Адаптивное масштабирование CSS */
+    height: auto; 
     display: block;
 }
 
@@ -301,7 +300,6 @@ input[type="range"] {
     border-left-color: var(--error-color);
 }
 
-/* Адаптив */
 @media (max-width: 600px) {
     .controls {
         flex-direction: column;

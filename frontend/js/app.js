@@ -1,11 +1,11 @@
 // Конфигурация
-const API_BASE_URL = ''; // Измените, если бэкенд на другом хосте
+const API_BASE_URL = ''; 
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
 
 // Состояние приложения
 let state = {
     selectedFile: null,
-    imageObj: null, // HTMLImageElement для отрисовки
+    imageObj: null, 
     taskId: null,
     pollIntervalId: null,
     lastDetections: []
@@ -35,12 +35,11 @@ const elements = {
 // Контекст Canvas
 const ctx = elements.canvas.getContext('2d');
 
-// --- Инициализация и слушатели событий ---
+//Инициализация и слушатели событий
 function init() {
-    // Проверка доступности API (опционально, в фоне)
+    // Проверка доступности API
     checkApiHealth();
 
-    // Drag and Drop
     elements.dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         elements.dropZone.classList.add('dragover');
@@ -61,7 +60,7 @@ function init() {
     // Клик по drop-zone для выбора файла
     elements.dropZone.addEventListener('click', () => elements.fileInput.click());
     
-    // Выбор файла через input
+    // Выбор файла
     elements.fileInput.addEventListener('change', (e) => {
         if (e.target.files.length) {
             handleFileSelect(e.target.files[0]);
@@ -82,7 +81,6 @@ function init() {
     elements.btnExportCsv.addEventListener('click', exportCSV);
 }
 
-// --- Логика работы с файлом ---
 function handleFileSelect(file) {
     // Валидация
     if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
@@ -127,7 +125,7 @@ function drawOriginalImage() {
     ctx.drawImage(state.imageObj, 0, 0);
 }
 
-// --- Взаимодействие с API ---
+// Взаимодействие с API 
 
 async function checkApiHealth() {
     try {
@@ -149,7 +147,6 @@ async function startDetection() {
     elements.resultsSection.classList.add('hidden');
     elements.statusText.textContent = 'Отправка изображения...';
     
-    // Восстанавливаем оригинальное изображение (стираем старые рамки, если были)
     drawOriginalImage(); 
 
     const formData = new FormData();
@@ -199,7 +196,6 @@ async function pollResult() {
             stopPolling();
             handleError('Ошибка обработки: ' + (data.error_message || 'Неизвестная ошибка'));
         }
-        // Если pending - продолжаем ждать
 
     } catch (error) {
         stopPolling();
@@ -235,7 +231,6 @@ function calculateIoU(box1, box2) {
 
 // Функция для удаления дубликатов
 function filterDuplicates(detections, threshold = 0.5) {
-    // Сортируем по уверенности (от большего к меньшему)
     const sorted = [...detections].sort((a, b) => b.confidence - a.confidence);
     const result = [];
 
@@ -243,7 +238,6 @@ function filterDuplicates(detections, threshold = 0.5) {
         const best = sorted.shift();
         result.push(best);
 
-        // Удаляем все остальные рамки, которые сильно пересекаются с текущей лучшей
         for (let i = 0; i < sorted.length; i++) {
             if (calculateIoU(best.bbox, sorted[i].bbox) > threshold) {
                 sorted.splice(i, 1);
@@ -254,7 +248,6 @@ function filterDuplicates(detections, threshold = 0.5) {
     return result;
 }
 
-// Обработка и визуализация результатов 
 
 function handleSuccess(detections) {
     // Убираем дубликаты по координатам
@@ -277,7 +270,6 @@ function renderDetectionsList(detections) {
         return;
     }
 
-    // Здесь используем d.class_name (русское слово)
     detections.forEach(d => {
         const confPercent = (d.confidence * 100).toFixed(1);
         const item = document.createElement('div');
@@ -327,7 +319,7 @@ function drawBoundingBoxes(detections) {
     });
 }
 
-// --- Экспорт данных ---
+// Экспорт данных
 
 function exportJSON() {
     if (!state.lastDetections.length) return showToast('Нет данных для экспорта', 'error');
@@ -344,7 +336,6 @@ function exportCSV() {
     
     // Строки
     state.lastDetections.forEach(d => {
-        // Экранирование названия класса на случай запятых
         const safeClassName = `"${d.class_name.replace(/"/g, '""')}"`;
         const row = [
             safeClassName,
@@ -369,7 +360,7 @@ function downloadFile(content, fileName, mimeType) {
     URL.revokeObjectURL(url);
 }
 
-// --- Утилиты ---
+// Утилиты
 
 function resetApp() {
     stopPolling();
@@ -406,7 +397,7 @@ function showToast(message, type = 'info') {
     // Удаление через 3 секунды
     setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300); // Ждем конец transition
+        setTimeout(() => toast.remove(), 300); 
     }, 3000);
 }
 
@@ -422,5 +413,4 @@ function escapeHTML(str) {
     );
 }
 
-// Старт приложения
 init();

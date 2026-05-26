@@ -29,7 +29,7 @@ class ResultStorage:
             logger.info("Redis connection closed")
 
     @property
-    def is_connected(self) -> bool:  # <-- новое свойство
+    def is_connected(self) -> bool: 
         """Возвращает True, если Redis подключен."""
         return self._connected
 
