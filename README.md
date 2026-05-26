@@ -3,6 +3,13 @@
 Веб-приложение для обнаружения дорожных знаков на изображениях.  
 Использует YOLO-модель, FastAPI-бэкенд, Kafka и Redis.
 
+## Команда
+
+* **ML-разработчик** — Бадашкеев Андрей
+* **Backend-разработчик** — Емельянов Александр
+* **Frontend-разработчик** — Макарова Полина
+* **DevOps** — Копац Алексей
+
 ## Структура проекта
 
 ```
@@ -18,17 +25,24 @@ street-sign-detector/
 │   ├── model.py                  # загрузка YOLO-модели
 │   ├── predict.py                # функция инференса predict_from_file()
 │   ├── utils.py                  # вспомогательные ML-функции
-│   └── models/                   # каталог для файлов весов
+│   └── models/                   # каталог для файлов весов (Git LFS)
 │       └── model_weights.pt      # обученная модель (добавляется отдельно)
 ├── frontend/                     # Frontend-часть приложения
+│   ├── index.html
+│   ├── css/style.css
+│   └── js/app.js
 ├── data/                         # Общее хранилище (shared volume)
 │   └── uploads/                  # временные загруженные изображения
-│   Dockerfile.api                # образ FastAPI
-│   Dockerfile.worker             # образ воркера
-│   Dockerfile.worker-gpu         # образ воркера с поддержкой GPU
+├── Dockerfile.api                # образ FastAPI
+├── Dockerfile.worker             # образ воркера
+├── Dockerfile.worker-gpu         # образ воркера с поддержкой GPU
+├── Dockerfile.frontend           # Nginx
 ├── docker-compose.yml            # локальный запуск всех сервисов
+├── prometheus.yml                # сбор метрик
 ├── .env.example                  # образец переменных окружения
 ├── requirements.txt              # Python-зависимости
+├── start_linux.sh                # Файл запуска из Linux Bash
+├── start_windows.ps1             # Файл запуска из Windows PowerShell
 └── README.md
 ```
 
@@ -98,7 +112,12 @@ pip install -r requirements-dev.txt
 ```
 requirements-dev.txt используется ТОЛЬКО для разработки. Для прода нужен чистый (без библиотечного мусора) requirements.txt.
 
-### 4. Запуск ПО
+### 3. Запуск ПО
+**Автоматический запуск (выбирает CPU или GPU в зависимости от конфигурациии машины)**
+* Linux/macOS/WSL: `bash start.sh`
+* Windows PowerShell: `.\start.ps1`
+**Запуск вручную**
+
 Первый запуск (сборка + 2 воркера)
 ```bash
 docker compose up --build --scale worker=2
@@ -113,7 +132,6 @@ docker compose up --scale worker=2
 ```bash
 docker compose up --scale worker=1
 ```
-После старта откройте Swagger UI: http://localhost:8000/docs
 
 Остановка
 ```bash
@@ -123,22 +141,54 @@ docker compose down
 ```bash
 uvicorn app.main:app --reload
 ```
-Требуются локально запущенные Kafka (на localhost:9092) и Redis (на localhost:6379).
-Worker запускается отдельно: python -m app.worker.
 
-## Взаимодействие ML и Backend
+После запуска:
+* 🖼️ **Фронтенд**: http://localhost
+* 📘 **Swagger UI**: http://localhost:8000/docs
+* 📊 **Prometheus**: http://localhost:9090
+* 📈 **Grafana**: http://localhost:3000 (admin / admin)
+* ♨️ **Kafka**: http://localhost:9092
+* 💾 **Redis**: http://localhost:6379
 
-- **ML-разработчик** размещает веса модели (`.pt`) в `ml/models/` и реализует `ml/predict.py` с функцией `predict_from_file(image_path, confidence_threshold)`, возвращающей список словарей с полями `class_name`, `bbox`, `confidence`.
-- **Backend-разработчик** использует эту функцию в worker-процессе (`app/worker.py`), который асинхронно обрабатывает задачи из очереди Kafka. Само API (FastAPI) не вызывает модель напрямую – оно принимает изображения, ставит задачи в очередь и отдаёт результат при запросе.
-- Модель загружается один раз при старте worker’а (через `ml.model.load_model()`), что гарантирует эффективное использование ресурсов.
+### Локальный запуск без Docker (для отладки)
 
-## Что добавится в репозиторий
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-1. Донастройка Git LFS.
-2. CI/CD: автоматическая сборка Docker‑образа при Pull Request (базовый GitHub Actions).
-3. Контейнеризация для GPU (Dockerfile.gpu).
-4. Версионирование модели и автоматическое восстановление после сбоев.
-5. Настройка логирования.
+uvicorn app.main:app --reload        # API
+python -m app.worker                  # Worker (нужны Kafka и Redis)
+```
+
+### Тестирование
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+ruff check .
+mypy .
+```
+
+## ПОЛЬЗОВАТЕЛЬСКОЕ ИСПОЛЬЗОВАНИЕ
+
+1. Откройте http://localhost
+2. Перетащите изображение или выберите файл (JPEG/PNG, до 10 МБ)
+3. Настройте порог уверенности (слайдер)
+4. Нажмите «Распознать»
+5. Просмотрите результат (рамки и названия знаков)
+6. Сохраните в JSON или CSV
+
+## Мониторинг
+
+* **Prometheus**: http://localhost:9090
+* **Grafana**: http://localhost:3000 (admin / admin)
+
+Метрики:
+* `detection_inference_seconds` — гистограмма времени инференса
+* `model_loaded` — статус загрузки модели (1/0)
+* `worker_tasks_in_progress` — количество активных задач
+* `predictions_total`, `prediction_duration_seconds` — HTTP-метрики API
 
 ---
 
