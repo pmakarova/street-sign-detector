@@ -82,7 +82,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile.worker-gpu
     profiles: ["cpu", ""]
     image: street-sign-worker:latest
     # Контейнеры будут именоваться docker compose с учётом масштаба: worker-1, worker-2, ...

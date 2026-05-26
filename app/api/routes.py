@@ -2,6 +2,7 @@
 import uuid
 import logging
 from pathlib import Path
+from PIL import Image
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request, Response
 from app.core.config import settings
 from app.api.schemas import TaskResponse, ResultResponse, DetectionResult
@@ -44,6 +45,8 @@ async def create_detection_task(
         ERRORS_TOTAL.inc()
         raise HTTPException(status_code=400, detail="Unsupported file type. Only JPEG and PNG allowed.")
 
+    if file.size and file.size > settings.MAX_IMAGE_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large")
     # Проверка доступности worker'ов
     if not await _has_workers(redis_client):
         ERRORS_TOTAL.inc()
@@ -55,6 +58,11 @@ async def create_detection_task(
     task_id = str(uuid.uuid4())
     file_extension = Path(file.filename).suffix if file.filename else ".jpg"
     saved_path = await save_upload_file(file_bytes, file_extension, settings.UPLOAD_DIR, task_id)
+
+    with Image.open(saved_path) as img:
+        w, h = img.size
+        if w < 1280 or h < 720 or w > 2268 or h > 4032:
+            raise HTTPException(status_code=400, detail="Invalid image dimensions")
 
     # Установка статуса pending
     await redis_client.set_task_status(task_id, "pending")

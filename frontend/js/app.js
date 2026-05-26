@@ -1,6 +1,6 @@
 // Конфигурация
 const API_BASE_URL = ''; 
-const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 // Состояние приложения
 let state = {
